@@ -13,15 +13,21 @@ st.set_page_config(
 )
 
 def initialize_services():
-    if 'db_service' not in st.session_state:
-        st.session_state.db_service = DatabaseService()
-    if 'vector_store' not in st.session_state:
-        st.session_state.vector_store = VectorStoreService()
-    if 'llm_service' not in st.session_state:
-        st.session_state.llm_service = LLMService()
+    try:
+        if 'db_service' not in st.session_state:
+            st.session_state.db_service = DatabaseService()
+        if 'vector_store' not in st.session_state:
+            st.session_state.vector_store = VectorStoreService()
+        if 'llm_service' not in st.session_state:
+            st.session_state.llm_service = LLMService()
+        return True
+    except Exception as e:
+        st.error(f"Error initializing services: {str(e)}")
+        return False
 
 def main():
-    initialize_services()
+    if not initialize_services():
+        st.stop()
     
     st.title("Document Processing System")
     
