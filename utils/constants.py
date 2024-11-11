@@ -1,6 +1,7 @@
 ALLOWED_EXTENSIONS = {
     'pdf', 'docx', 'jpg', 'jpeg', 'png',
-    'json', 'xml', 'csv', 'zip'
+    'json', 'xml', 'csv', 'zip', 'md',
+    'txt', 'html', 'htm', 'rtf'
 }
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB

@@ -9,6 +9,9 @@ import json
 import xml.etree.ElementTree as ET
 import csv
 import pandas as pd
+import markdown
+from bs4 import BeautifulSoup
+import re
 
 class FileHandler(ABC):
     @abstractmethod
@@ -47,6 +50,40 @@ class CSVHandler(FileHandler):
         df = pd.read_csv(file)
         return df.to_string()
 
+class MarkdownHandler(FileHandler):
+    def extract_text(self, file: BinaryIO) -> str:
+        content = file.read().decode('utf-8')
+        # Convert markdown to HTML
+        html = markdown.markdown(content)
+        # Remove HTML tags to get clean text
+        soup = BeautifulSoup(html, 'html.parser')
+        return soup.get_text(separator='\n\n')
+
+class TextHandler(FileHandler):
+    def extract_text(self, file: BinaryIO) -> str:
+        return file.read().decode('utf-8')
+
+class HTMLHandler(FileHandler):
+    def extract_text(self, file: BinaryIO) -> str:
+        content = file.read().decode('utf-8')
+        soup = BeautifulSoup(content, 'html.parser')
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+        # Get text
+        text = soup.get_text(separator='\n\n')
+        # Remove extra whitespace and empty lines
+        text = re.sub(r'\n\s*\n', '\n\n', text.strip())
+        return text
+
+class RTFHandler(FileHandler):
+    def extract_text(self, file: BinaryIO) -> str:
+        # Simple RTF text extraction
+        content = file.read().decode('utf-8', errors='ignore')
+        # Remove RTF formatting
+        text = re.sub(r'[\\\{\}]|\\\w+|\{.*?\}', '', content)
+        return text.strip()
+
 class FileHandlerFactory:
     _handlers = {
         'pdf': PDFHandler(),
@@ -56,7 +93,12 @@ class FileHandlerFactory:
         'png': ImageHandler(),
         'json': JSONHandler(),
         'xml': XMLHandler(),
-        'csv': CSVHandler()
+        'csv': CSVHandler(),
+        'md': MarkdownHandler(),
+        'txt': TextHandler(),
+        'html': HTMLHandler(),
+        'htm': HTMLHandler(),
+        'rtf': RTFHandler()
     }
 
     @classmethod
@@ -65,4 +107,3 @@ class FileHandlerFactory:
         if not handler:
             raise ValueError(f"Unsupported file type: {file_type}")
         return handler
-
