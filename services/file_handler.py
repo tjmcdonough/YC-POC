@@ -79,11 +79,11 @@ class DocxHandler(FileHandler):
         doc = docx.Document(file)
         text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
         image_summaries = []
-        
         if llm_service:  # Only process images if LLM service is provided
             for rel in doc.part.rels.values():
                 if "image" in rel.target_ref:
                     try:
+                        print(rel)
                         # Extract image
                         image_data = rel.target_part.blob
                         image = Image.open(io.BytesIO(image_data))
