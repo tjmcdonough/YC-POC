@@ -38,7 +38,6 @@ def main():
     
     with tabs[1]:
         render_query_interface(
-            st.session_state.db_service,
             st.session_state.vector_store,
             st.session_state.llm_service
         )
