@@ -7,6 +7,7 @@ import uuid
 import threading
 from queue import Queue
 import time
+import json
 
 def render_file_upload(db_service, vector_store, llm_service):
     st.header("Document Upload")
@@ -59,11 +60,12 @@ def process_single_file(file, db_service, vector_store, llm_service):
     total_chunks = len(chunks)
     
     # Save to database with initial status
+    metadata = json.dumps({"size": len(text_content)})
     doc_id = db_service.save_document(
         filename=file.name,
         file_type=file_type,
         summary=summary,
-        metadata={"size": len(text_content)},
+        metadata=metadata,
         total_chunks=total_chunks
     )
     
