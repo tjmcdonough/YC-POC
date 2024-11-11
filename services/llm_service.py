@@ -17,21 +17,21 @@ os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGCHAIN_API_KEY"] = "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"
 os.environ["LANGCHAIN_PROJECT"] = "pr-rundown-king-67"
 
-default_model = "gpt-4o-mini"
+default_model = "gpt-4-vision-preview"  # Updated to use vision model
 embedding_model = "text-embedding-3-small"
 
 class LLMService:
     def __init__(self):
         self.llm = ChatOpenAI(
             temperature=0,
-            model_name=default_model,
-            openai_api_key=os.environ["OPENAI_API_KEY"],
+            model="gpt-4",  # Regular model for text processing
+            api_key=os.environ["OPENAI_API_KEY"],
             max_tokens=4096
         )
 
         self.embeddings = OpenAIEmbeddings(
             model=embedding_model,
-            openai_api_key=os.environ["OPENAI_API_KEY"]
+            api_key=os.environ["OPENAI_API_KEY"]
         )
 
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -133,14 +133,15 @@ class LLMService:
         return {"analysis": str(response.content), "type": query_type}
 
     def analyze_image(self, image_input: Union[str, bytes, Image.Image], analysis_type: str = "general") -> str:
+        """Analyze an image using OpenAI's GPT-4 Vision model"""
         try:
             # Validate and prepare image
             img = self.validate_image(image_input)
             image_base64 = self.encode_image(img)
 
-            # Use the OpenAI client directly for image analysis
+            # Use the OpenAI client with GPT-4 Vision
             response = self.client.chat.completions.create(
-                model=default_model,
+                model="gpt-4-vision-preview",
                 messages=[
                     {
                         "role": "system",
@@ -155,30 +156,38 @@ class LLMService:
                             },
                             {
                                 "type": "image_url",
-                                "url": {
+                                "image_url": {
                                     "url": f"data:image/png;base64,{image_base64}"
                                 }
                             }
                         ]
                     }
-                ]
+                ],
+                max_tokens=500
             )
-            return response.choices[0].message.content
+            
+            # Extract and return the analysis
+            if response.choices and response.choices[0].message.content:
+                return response.choices[0].message.content
+            return "No analysis generated"
+            
         except Exception as e:
-            return f"Analysis error: {str(e)}"
+            error_msg = f"Analysis error: {str(e)}"
+            print(f"Image analysis failed: {error_msg}")  # Log the error
+            return error_msg
 
     def batch_analyze_images(
         self,
         images: List[Union[str, bytes, Image.Image]],
         analysis_type: str = "general"
     ) -> Dict[int, str]:
-        """
-        Batch process multiple images and return their analyses
-        """
+        """Batch process multiple images and return their analyses"""
         results = {}
         for idx, image in enumerate(images):
             try:
                 results[idx] = self.analyze_image(image, analysis_type)
             except Exception as e:
-                results[idx] = f"Error processing image {idx}: {str(e)}"
+                error_msg = f"Error processing image {idx}: {str(e)}"
+                print(f"Batch processing error: {error_msg}")  # Log the error
+                results[idx] = error_msg
         return results
