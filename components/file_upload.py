@@ -49,8 +49,8 @@ def process_single_file(file, db_service, vector_store, llm_service):
     file_type = file.name.split('.')[-1].lower()
     handler = FileHandlerFactory.get_handler(file_type)
     
-    # Extract text content
-    text_content = handler.extract_text(file)
+    # Extract text content with image analysis if applicable
+    text_content = handler.extract_text(file, llm_service)
     
     # Generate initial summary
     summary = "Processing..." if len(text_content) > 10000 else llm_service.generate_summary(text_content)
