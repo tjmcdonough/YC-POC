@@ -1,28 +1,28 @@
 import os
+from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
-from langchain_core.prompts.image import ImagePromptTemplate
-from langchain_core.messages import HumanMessage
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union
 from openai import OpenAI
 import base64
 import io
 from PIL import Image
+from langchain_core.prompts.image import ImagePromptTemplate
 
 # LangChain tracing configuration
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
 os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
-os.environ["LANGCHAIN_API_KEY"] = "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"
+os.environ[
+    "LANGCHAIN_API_KEY"] = "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"
 os.environ["LANGCHAIN_PROJECT"] = "pr-rundown-king-67"
+default_model = "gpt-4o-mini"
+embedding_model = "text-embedding-3-small"
 
-default_model = "gpt-4"
-vision_model = "gpt-4-vision-preview"
-embedding_model = "text-embedding-ada-002"
 
 class LLMService:
+
     def __init__(self):
         from langchain.callbacks.manager import CallbackManager
         from langchain.callbacks.tracers import LangChainTracer
@@ -30,32 +30,19 @@ class LLMService:
         tracer = LangChainTracer()
         callback_manager = CallbackManager([tracer])
 
-        self.llm = ChatOpenAI(
-            temperature=0,
-            model=default_model,
-            api_key=os.environ["OPENAI_API_KEY"],
-            callbacks=callback_manager,
-            max_tokens=4096
-        )
-        
-        self.vision_llm = ChatOpenAI(
-            temperature=0,
-            model=vision_model,
-            api_key=os.environ["OPENAI_API_KEY"],
-            callbacks=callback_manager,
-            max_tokens=4096
-        )
+        self.llm = ChatOpenAI(temperature=0,
+                              model=default_model,
+                              api_key=os.environ["OPENAI_API_KEY"],
+                              callbacks=callback_manager,
+                              max_tokens=4096)
 
         self.embeddings = OpenAIEmbeddings(
             model=embedding_model,
             api_key=os.environ["OPENAI_API_KEY"],
-            callbacks=callback_manager
-        )
+            callbacks=callback_manager)
 
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=100
-        )
+        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000,
+                                                            chunk_overlap=100)
 
         self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
@@ -89,8 +76,7 @@ class LLMService:
 
             {text}
 
-            Summary:"""
-        )
+            Summary:""")
         response = self.llm.invoke(prompt.format(text=text[:4000]))
         return str(response.content)
 
@@ -106,30 +92,31 @@ class LLMService:
 
             Query: {query}
 
-            Analysis:"""
-        )
+            Analysis:""")
         response = self.llm.invoke(prompt.format(query=query))
 
         # Determine query type based on content
         query_type = "semantic"
-        if any(word in query.lower() for word in ["compare", "difference", "versus", "vs"]):
+        if any(word in query.lower()
+               for word in ["compare", "difference", "versus", "vs"]):
             query_type = "comparative"
-        elif any(word in query.lower() for word in ["when", "timeline", "chronological"]):
+        elif any(word in query.lower()
+                 for word in ["when", "timeline", "chronological"]):
             query_type = "temporal"
-        elif any(word in query.lower() for word in ["sentiment", "opinion", "feel"]):
+        elif any(word in query.lower()
+                 for word in ["sentiment", "opinion", "feel"]):
             query_type = "sentiment"
-        elif any(word in query.lower() for word in ["trend", "pattern", "change over time"]):
+        elif any(word in query.lower()
+                 for word in ["trend", "pattern", "change over time"]):
             query_type = "trend"
 
         return {"analysis": str(response.content), "type": query_type}
 
-    def analyze_image(self, image_input: Union[str, Image.Image], analysis_type: str = "general") -> str:
+    def analyze_image(self, image_input: Union[str, Image.Image]) -> str:
         """
-        Analyze an image using OpenAI's vision model.
-
+        Analyze an image using OpenAI with ImagePromptTemplate.
         Args:
             image_input: Either a base64 string or PIL Image object
-            analysis_type: Type of analysis to perform (general, technical, artistic, etc.)
         """
         try:
             # Handle different input types
@@ -141,61 +128,45 @@ class LLMService:
             elif isinstance(image_input, Image.Image):
                 buffer = io.BytesIO()
                 image_input.save(buffer, format="PNG")
-                image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+                image_base64 = base64.b64encode(
+                    buffer.getvalue()).decode('utf-8')
             else:
                 raise ValueError("Invalid image input type")
 
-            # Create the appropriate prompt based on analysis type
-            prompts = {
-                "general": """Provide a detailed description of this image, focusing on key elements, colors, and composition. 
-                Include information about:
-                1. Main subjects or objects
-                2. Colors and lighting
-                3. Composition and layout
-                4. Context or setting
-                5. Any notable details or unique features""",
-                "technical": """Analyze this image from a technical perspective, focusing on:
-                1. Image quality and resolution
-                2. Lighting conditions and exposure
-                3. Composition techniques used
-                4. Camera angle and perspective
-                5. Color balance and contrast
-                6. Any visible artifacts or issues""",
-                "artistic": """Evaluate this image from an artistic perspective, describing:
-                1. Artistic style and technique
-                2. Mood and atmosphere
-                3. Use of color and composition
-                4. Creative elements and visual storytelling
-                5. Aesthetic impact and artistic choices""",
-            }
+            # Get the appropriate template text
+            prompt_message = "Provide a detailed description of this image."
 
-            prompt_text = prompts.get(analysis_type, prompts["general"])
-
-            # Create messages for the vision model
+            # Create messages with both text and image
             messages = [
                 HumanMessage(content=[{
                     "type": "text",
-                    "text": prompt_text
+                    "text": prompt_message
                 }, {
                     "type": "image_url",
-                    "image_url": f"data:image/jpeg;base64,{image_base64}"
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image_base64}",
+                        "detail": "high"
+                    },
                 }])
             ]
 
-            # Get response from the vision model
-            response = self.vision_llm.invoke(messages)
+            # Get response from the model
+            response = self.llm.invoke(messages)
 
-            return str(response.content) if response.content else "No description available"
+            return str(response.content
+                       ) if response.content else "No description available"
 
         except Exception as e:
             return f"Error analyzing image: {str(e)}"
 
-    def batch_process_images(self, image_paths: List[str], analysis_type: str = "general") -> Dict[str, str]:
+    def batch_process_images(self,
+                             image_paths: List[str],
+                             analysis_type: str = "general") -> Dict[str, str]:
         """Process multiple images and return their analyses"""
         results = {}
         for image_path in image_paths:
             try:
-                results[image_path] = self.analyze_image(image_path, analysis_type)
+                results[image_path] = self.analyze_image(image_path)
             except Exception as e:
                 results[image_path] = f"Error processing image: {str(e)}"
         return results

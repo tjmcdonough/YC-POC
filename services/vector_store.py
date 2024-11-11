@@ -4,7 +4,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from typing import List, Dict
 from dataclasses import dataclass
-import os
+
 
 @dataclass
 class SearchResult:
@@ -12,19 +12,18 @@ class SearchResult:
     metadatas: List[Dict]
     distances: List[float]
 
+
 class VectorStoreService:
+
     def __init__(self):
         self.embeddings = OpenAIEmbeddings()
         self.text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-            chunk_size=300,
-            chunk_overlap=50
-        )
-        self.vectorstore = Chroma(
-            persist_directory="./chroma_store",
-            embedding_function=self.embeddings
-        )
-    
-    def add_documents(self, texts: List[str], metadata: List[Dict], ids: List[str]):
+            chunk_size=300, chunk_overlap=50)
+        self.vectorstore = Chroma(persist_directory="./chroma_store",
+                                  embedding_function=self.embeddings)
+
+    def add_documents(self, texts: List[str], metadata: List[Dict],
+                      ids: List[str]):
         """
         Add documents to the vector store
 
@@ -34,13 +33,15 @@ class VectorStoreService:
             ids: List of unique identifiers
         """
         documents = [
-            Document(page_content=text, metadata=meta) 
+            Document(page_content=text, metadata=meta)
             for text, meta in zip(texts, metadata)
         ]
         splits = self.text_splitter.split_documents(documents)
         self.vectorstore.add_documents(documents=splits)
-    
-    def query_documents(self, query_text: str, n_results: int = 5) -> SearchResult:
+
+    def query_documents(self,
+                        query_text: str,
+                        n_results: int = 5) -> SearchResult:
         """
         Query documents using text similarity
 
