@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.validators import validate_query
 from components.results_display import render_results
+from services.file_handler import FileHandlerFactory
 
 def render_query_interface(db_service, vector_store, llm_service):
     st.header("Query Documents")

@@ -1,7 +1,7 @@
 import os
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.embeddings import OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from typing import List, Dict
@@ -10,11 +10,11 @@ class LLMService:
     def __init__(self):
         self.llm = ChatOpenAI(
             temperature=0,
-            model_name="gpt-3.5-turbo",
-            openai_api_key=os.environ["OPENAI_API_KEY"]
+            model="gpt-3.5-turbo",
+            api_key=os.environ["OPENAI_API_KEY"]
         )
         self.embeddings = OpenAIEmbeddings(
-            openai_api_key=os.environ["OPENAI_API_KEY"]
+            api_key=os.environ["OPENAI_API_KEY"]
         )
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
