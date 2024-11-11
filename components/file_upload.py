@@ -83,9 +83,6 @@ def process_single_file(file: BinaryIO, db_service, vector_store, llm_service, b
     status_container.info("Extracting text content...")
     text_content = handler.extract_text(file, llm_service)
     
-    # Generate initial summary for smaller files
-    initial_summary = "Processing..." if len(text_content) > 10000 else llm_service.generate_summary(text_content)
-    
     # Split text for vector store
     status_container.info("Splitting text into chunks...")
     chunks = llm_service.split_text(text_content)
@@ -95,7 +92,7 @@ def process_single_file(file: BinaryIO, db_service, vector_store, llm_service, b
     doc_id = db_service.save_document(
         filename=file.name,
         file_type=file_type,
-        summary=initial_summary,
+        summary="",  # Empty summary since we're not generating one
         metadata=json.dumps({
             "size": len(text_content),
             "chunks": total_chunks,
@@ -144,15 +141,12 @@ def process_single_file(file: BinaryIO, db_service, vector_store, llm_service, b
                 # Small delay to prevent overwhelming the system
                 time.sleep(0.1)
         
-        # Generate final summary for larger documents
-        if len(text_content) > 10000:
-            status_container.info("Generating final summary...")
-            final_summary = llm_service.generate_summary(text_content)
-            db_service.update_processing_status(
-                doc_id=doc_id,
-                processed_chunks=total_chunks,
-                status='completed'
-            )
+        # Mark processing as completed
+        db_service.update_processing_status(
+            doc_id=doc_id,
+            processed_chunks=total_chunks,
+            status='completed'
+        )
     
     finally:
         # Clean up progress indicators
