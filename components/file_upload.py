@@ -4,6 +4,9 @@ import zipfile
 import io
 from services.file_handler import FileHandlerFactory
 import uuid
+import threading
+from queue import Queue
+import time
 
 def render_file_upload(db_service, vector_store, llm_service):
     st.header("Document Upload")
@@ -48,37 +51,77 @@ def process_single_file(file, db_service, vector_store, llm_service):
     # Extract text content
     text_content = handler.extract_text(file)
     
-    # Generate summary using LLM
-    summary = llm_service.generate_summary(text_content)
+    # Generate initial summary
+    summary = "Processing..." if len(text_content) > 10000 else llm_service.generate_summary(text_content)
     
     # Split text for vector store
     chunks = llm_service.split_text(text_content)
+    total_chunks = len(chunks)
     
-    # Save to database
+    # Save to database with initial status
     doc_id = db_service.save_document(
         filename=file.name,
         file_type=file_type,
         summary=summary,
-        metadata={"size": len(text_content)}
+        metadata={"size": len(text_content)},
+        total_chunks=total_chunks
     )
     
-    # Save to vector store
-    vector_store.add_documents(
-        texts=chunks,
-        metadata=[{"doc_id": doc_id, "chunk": i} for i in range(len(chunks))],
-        ids=[f"{doc_id}-{uuid.uuid4()}" for _ in range(len(chunks))]
-    )
+    # Create progress bar if needed
+    progress_bar = None
+    if total_chunks > 1:
+        progress_bar = st.progress(0)
+        st.text("Processing chunks...")
+    
+    # Process chunks in batches
+    batch_size = 5
+    for i in range(0, total_chunks, batch_size):
+        batch_chunks = chunks[i:i+batch_size]
+        batch_ids = [f"{doc_id}-{uuid.uuid4()}" for _ in range(len(batch_chunks))]
+        batch_metadata = [{"doc_id": doc_id, "chunk": i+j} for j in range(len(batch_chunks))]
+        
+        # Save batch to vector store
+        vector_store.add_documents(
+            texts=batch_chunks,
+            metadata=batch_metadata,
+            ids=batch_ids
+        )
+        
+        # Update progress
+        processed_chunks = min(i + batch_size, total_chunks)
+        if progress_bar:
+            progress_bar.progress(processed_chunks / total_chunks)
+        db_service.update_processing_status(doc_id, processed_chunks)
+        
+        # Small delay to prevent overwhelming the system
+        time.sleep(0.1)
+    
+    # Update final summary if it was initially deferred
+    if len(text_content) > 10000:
+        summary = llm_service.generate_summary(text_content)
+        db_service.update_processing_status(doc_id, total_chunks, 'completed')
+        
+    if progress_bar:
+        progress_bar.empty()
 
 def process_zip_file(zip_file, db_service, vector_store, llm_service):
     with zipfile.ZipFile(zip_file) as z:
-        for filename in z.namelist():
-            if not filename.endswith('/'):  # Skip directories
-                with z.open(filename) as f:
-                    file_content = io.BytesIO(f.read())
-                    file_content.name = filename
-                    process_single_file(
-                        file_content,
-                        db_service,
-                        vector_store,
-                        llm_service
-                    )
+        total_files = len([f for f in z.namelist() if not f.endswith('/')])
+        if total_files > 0:
+            progress_bar = st.progress(0)
+            st.text(f"Processing {total_files} files...")
+            
+            for idx, filename in enumerate(z.namelist()):
+                if not filename.endswith('/'):  # Skip directories
+                    with z.open(filename) as f:
+                        file_content = io.BytesIO(f.read())
+                        file_content.name = filename
+                        process_single_file(
+                            file_content,
+                            db_service,
+                            vector_store,
+                            llm_service
+                        )
+                        progress_bar.progress((idx + 1) / total_files)
+            
+            progress_bar.empty()

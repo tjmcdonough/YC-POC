@@ -30,11 +30,20 @@ def render_results(query_analysis, vector_results, documents):
             )
             if full_doc:
                 st.markdown("**Document Summary:**")
-                st.write(full_doc['summary'])
+                if full_doc['processing_status'] == 'processing':
+                    st.warning(f"Processing: {full_doc['processed_chunks']}/{full_doc['total_chunks']} chunks")
+                else:
+                    st.write(full_doc['summary'])
     
     st.subheader("All Documents")
     df = pd.DataFrame(documents)
+    df['status'] = df.apply(
+        lambda x: f"{x['processing_status']} ({x['processed_chunks']}/{x['total_chunks']})" 
+        if x['processing_status'] == 'processing' 
+        else 'completed',
+        axis=1
+    )
     st.dataframe(
-        df[['filename', 'file_type', 'created_at']],
+        df[['filename', 'file_type', 'status', 'created_at']],
         use_container_width=True
     )
