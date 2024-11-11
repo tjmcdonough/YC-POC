@@ -21,4 +21,5 @@ dependencies = [
     "python-dotenv",
     "sqlalchemy>=1.0.1",
     "streamlit>=1.40.0",
+    "tiktoken>=0.8.0",
 ]
