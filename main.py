@@ -34,11 +34,7 @@ def main():
     tabs = st.tabs(["Document Upload", "Query Documents"])
     
     with tabs[0]:
-        render_file_upload(
-            st.session_state.db_service,
-            st.session_state.vector_store,
-            st.session_state.llm_service
-        )
+        render_file_upload(st.session_state.vector_store)
     
     with tabs[1]:
         render_query_interface(
