@@ -4,6 +4,7 @@ import io
 from typing import BinaryIO
 from utils.validators import validate_file
 from services.file_handler import FileHandlerFactory
+import time
 
 def process_single_file(file: BinaryIO, vector_store) -> None:
     # Get file handler
@@ -12,11 +13,14 @@ def process_single_file(file: BinaryIO, vector_store) -> None:
     
     # Extract text content
     text_content = handler.extract_text(file)
+
+    # Get timestamp now
+    timestamp = time.time()
     
     # Add to vector store
     vector_store.add_documents(
-        texts=[text_content],
-        metadata=[{"filename": file.name, "file_type": file_type}]
+        text=text_content,
+        metadata={"filename": file.name, "file_type": file_type, "created_at": timestamp}
     )
 
 def render_file_upload(vector_store):
