@@ -2168,6 +2168,7 @@ dependencies = [
     { name = "psycopg2-pool" },
     { name = "pymupdf" },
     { name = "python-docx" },
+    { name = "python-dotenv" },
     { name = "sqlalchemy" },
     { name = "streamlit" },
 ]
@@ -2188,7 +2189,8 @@ requires-dist = [
     { name = "psycopg2-pool", specifier = ">=1.2" },
     { name = "pymupdf", specifier = ">=1.24.13" },
     { name = "python-docx", specifier = ">=1.1.2" },
-    { name = "sqlalchemy", specifier = ">=2.0.35" },
+    { name = "python-dotenv" },
+    { name = "sqlalchemy", specifier = ">=1.0.1" },
     { name = "streamlit", specifier = ">=1.40.0" },
 ]
 
