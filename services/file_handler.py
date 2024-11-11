@@ -79,6 +79,7 @@ class DocxHandler(FileHandler):
         doc = docx.Document(file)
         text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
         image_summaries = []
+        print("Running DocxHandler")
         if llm_service:  # Only process images if LLM service is provided
             for rel in doc.part.rels.values():
                 if "image" in rel.target_ref:
