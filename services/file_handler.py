@@ -16,11 +16,10 @@ import base64
 
 class FileHandler(ABC):
     @abstractmethod
-    def extract_text(self, file: BinaryIO) -> str:
+    def extract_text(self, file: BinaryIO, llm_service=None) -> str:
         pass
 
     def _get_image_summary(self, image: Image.Image, llm_service) -> str:
-        # Convert image to base64 for API
         buffered = io.BytesIO()
         image.save(buffered, format=image.format or 'PNG')
         img_str = base64.b64encode(buffered.getvalue()).decode()
@@ -28,34 +27,52 @@ class FileHandler(ABC):
 
 class PDFHandler(FileHandler):
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:
-        pdf_document = fitz.open(stream=file.read(), filetype="pdf")
-        text = ""
-        image_summaries = []
-        
-        for page in pdf_document:
-            text += page.get_text()
-            if llm_service:  # Only process images if LLM service is provided
-                # Extract images
-                images = page.get_images()
-                for img_index, img in enumerate(images):
-                    try:
-                        xref = img[0]
-                        base_image = pdf_document.extract_image(xref)
-                        image_data = base_image["image"]
-                        # Convert to PIL Image
-                        image = Image.open(io.BytesIO(image_data))
-                        # Get image summary from LLM
-                        image_summary = self._get_image_summary(image, llm_service)
-                        image_summaries.append(f"Image {img_index + 1}: {image_summary}")
-                    except Exception as e:
-                        print(f"Error processing image {img_index + 1}: {str(e)}")
-                        continue
-        
-        # Combine text and image summaries
-        if image_summaries:
-            combined_text = text + "\n\nImage Descriptions:\n" + "\n".join(image_summaries)
-            return combined_text
-        return text
+        try:
+            # Create a bytes buffer from the file
+            file_content = file.read()
+            pdf_document = fitz.open(stream=file_content, filetype="pdf")
+            text_parts = []
+            image_summaries = []
+            
+            # Process each page
+            for page_num in range(len(pdf_document)):
+                page = pdf_document[page_num]
+                # Extract text using the correct PyMuPDF method
+                text = page.get_text().strip()
+                if text:  # Only append non-empty text
+                    text_parts.append(text)
+                
+                # Process images if LLM service is provided
+                if llm_service:
+                    for img_index, img in enumerate(page.get_images(full=True)):
+                        try:
+                            xref = img[0]  # Get reference number
+                            base_image = pdf_document.extract_image(xref)
+                            if base_image:
+                                image_data = base_image["image"]
+                                # Convert to PIL Image
+                                image = Image.open(io.BytesIO(image_data))
+                                # Get image summary
+                                image_summary = self._get_image_summary(image, llm_service)
+                                image_summaries.append(f"[Page {page_num + 1}, Image {img_index + 1}]: {image_summary}")
+                        except Exception as e:
+                            print(f"Error processing image on page {page_num + 1}, image {img_index + 1}: {str(e)}")
+                            continue
+            
+            # Memory efficient text combination
+            text = "\n\n".join(text_parts)
+            
+            # Combine text and image summaries if any exist
+            if image_summaries:
+                text = text + "\n\nImage Descriptions:\n" + "\n".join(image_summaries)
+            
+            return text
+
+        except Exception as e:
+            raise Exception(f"Error processing PDF: {str(e)}")
+        finally:
+            if 'pdf_document' in locals():
+                pdf_document.close()
 
 class DocxHandler(FileHandler):
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:

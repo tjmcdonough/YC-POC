@@ -2155,6 +2155,7 @@ dependencies = [
     { name = "psycopg2-binary" },
     { name = "pymupdf" },
     { name = "python-docx" },
+    { name = "sqlalchemy" },
     { name = "streamlit" },
 ]
 
@@ -2173,6 +2174,7 @@ requires-dist = [
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "pymupdf", specifier = ">=1.24.13" },
     { name = "python-docx", specifier = ">=1.1.2" },
+    { name = "sqlalchemy", specifier = ">=2.0.35" },
     { name = "streamlit", specifier = ">=1.40.0" },
 ]
 
