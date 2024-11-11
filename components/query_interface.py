@@ -23,7 +23,8 @@ def render_query_interface(db_service, vector_store, llm_service):
     with col2:
         date_range = st.date_input(
             "Filter by date range",
-            value=[None, None]
+            value=None,
+            key="date_filter"
         )
     
     if st.button("Search", type="primary"):
@@ -42,11 +43,12 @@ def render_query_interface(db_service, vector_store, llm_service):
             filters = {}
             if file_type_filter:
                 filters["file_type"] = file_type_filter
-            if date_range[0] and date_range[1]:
-                filters["date_range"] = {
-                    "start": date_range[0],
-                    "end": date_range[1]
-                }
+            if isinstance(date_range, tuple) and len(date_range) == 2:
+                if date_range[0] is not None and date_range[1] is not None:
+                    filters["date_range"] = {
+                        "start": date_range[0],
+                        "end": date_range[1]
+                    }
             
             documents = db_service.get_documents(filters)
             
