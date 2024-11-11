@@ -32,25 +32,44 @@ class DatabaseService:
                 )
             """)
             
-            # Add trigger for updated_at
-            cur.execute("""
+            # Create or replace the updated_at function
+            cur.execute('''
                 CREATE OR REPLACE FUNCTION update_updated_at_column()
                 RETURNS TRIGGER AS $$
                 BEGIN
                     NEW.updated_at = CURRENT_TIMESTAMP;
                     RETURN NEW;
                 END;
-                $$ language 'plpgsql';
-            """)
-            
-            cur.execute("""
+                $$ LANGUAGE plpgsql;
+            ''')
+
+            # Drop existing trigger if exists and create new one
+            cur.execute('''
                 DROP TRIGGER IF EXISTS update_documents_updated_at ON documents;
-                
+            ''')
+
+            cur.execute('''
                 CREATE TRIGGER update_documents_updated_at
-                    BEFORE UPDATE ON documents
-                    FOR EACH ROW
-                    EXECUTE FUNCTION update_updated_at_column();
-            """)
+                BEFORE UPDATE ON documents
+                FOR EACH ROW
+                EXECUTE FUNCTION update_updated_at_column();
+            ''')
+
+            # Ensure the updated_at column exists
+            cur.execute('''
+                DO $$ 
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'documents' 
+                        AND column_name = 'updated_at'
+                    ) THEN
+                        ALTER TABLE documents 
+                        ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+                    END IF;
+                END $$;
+            ''')
         self.conn.commit()
 
     def save_document(self, filename: str, file_type: str, summary: str, metadata: Dict, total_chunks: int = 1) -> int:
