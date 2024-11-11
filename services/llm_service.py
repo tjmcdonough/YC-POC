@@ -4,7 +4,6 @@ from langchain_openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
-from langchain_core.messages import HumanMessage, SystemMessage
 from typing import List, Dict, Union, Optional
 from openai import OpenAI
 import base64
@@ -18,29 +17,21 @@ os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGCHAIN_API_KEY"] = "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"
 os.environ["LANGCHAIN_PROJECT"] = "pr-rundown-king-67"
 
-default_model = "gpt-4-vision-preview"
+default_model = "gpt-4o-mini"
 embedding_model = "text-embedding-3-small"
 
 class LLMService:
     def __init__(self):
-        from langchain.callbacks.manager import CallbackManager
-        from langchain.callbacks.tracers import LangChainTracer
-
-        tracer = LangChainTracer()
-        callback_manager = CallbackManager([tracer])
-
         self.llm = ChatOpenAI(
             temperature=0,
-            model=default_model,
-            api_key=os.environ["OPENAI_API_KEY"],
-            callbacks=callback_manager,
+            model_name=default_model,
+            openai_api_key=os.environ["OPENAI_API_KEY"],
             max_tokens=4096
         )
 
         self.embeddings = OpenAIEmbeddings(
             model=embedding_model,
-            api_key=os.environ["OPENAI_API_KEY"],
-            callbacks=callback_manager
+            openai_api_key=os.environ["OPENAI_API_KEY"]
         )
 
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -142,62 +133,37 @@ class LLMService:
         return {"analysis": str(response.content), "type": query_type}
 
     def analyze_image(self, image_input: Union[str, bytes, Image.Image], analysis_type: str = "general") -> str:
-        """
-        Analyze an image using GPT-4 Vision.
-        
-        Args:
-            image_input: Image input as base64 string, file path, bytes, or PIL Image
-            analysis_type: Type of analysis to perform (general, technical, detailed, ocr)
-        """
         try:
             # Validate and prepare image
             img = self.validate_image(image_input)
             image_base64 = self.encode_image(img)
 
-            # Define analysis prompts
-            prompts = {
-                "general": "Provide a clear and concise description of this image, focusing on the main elements and overall composition.",
-                "technical": "Analyze this image from a technical perspective, including image quality, composition techniques, lighting, and any notable technical aspects.",
-                "detailed": "Provide a detailed analysis of this image, including all visible elements, their relationships, colors, textures, and any text or symbols present.",
-                "ocr": "Extract and organize any text visible in this image, including signs, labels, or documents."
-            }
-
-            # Set up system message based on analysis type
-            system_message = SystemMessage(content=f"""You are an expert image analyst. 
-                Analyze the following image according to these guidelines:
-                1. Be precise and factual
-                2. Focus on {analysis_type} aspects
-                3. Structure your response clearly
-                4. Note any uncertainties
-                5. Include relevant measurements or technical details if visible
-                """)
-
-            # Create messages for the vision model
-            messages = [
-                system_message,
-                HumanMessage(
-                    content=[
-                        {
-                            "type": "text",
-                            "text": prompts.get(analysis_type, prompts["general"])
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": f"data:image/png;base64,{image_base64}"
-                        }
-                    ]
-                )
-            ]
-
-            # Get response from the model with error handling
-            try:
-                response = self.llm.invoke(messages)
-                return str(response.content)
-            except Exception as e:
-                raise Exception(f"Model inference failed: {str(e)}")
-
-        except ValueError as ve:
-            return f"Image validation error: {str(ve)}"
+            # Use the OpenAI client directly for image analysis
+            response = self.client.chat.completions.create(
+                model=default_model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"You are an expert image analyst. Analyze the image according to these guidelines: Be precise and factual, focus on {analysis_type} aspects."
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Please analyze this image in detail."
+                            },
+                            {
+                                "type": "image_url",
+                                "url": {
+                                    "url": f"data:image/png;base64,{image_base64}"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            )
+            return response.choices[0].message.content
         except Exception as e:
             return f"Analysis error: {str(e)}"
 
@@ -208,10 +174,6 @@ class LLMService:
     ) -> Dict[int, str]:
         """
         Batch process multiple images and return their analyses
-        
-        Args:
-            images: List of images (as base64 strings, file paths, bytes, or PIL Images)
-            analysis_type: Type of analysis to perform
         """
         results = {}
         for idx, image in enumerate(images):
