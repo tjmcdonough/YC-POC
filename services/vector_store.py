@@ -4,57 +4,34 @@ from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from typing import List, Dict
 from dataclasses import dataclass
-
-
-@dataclass
-class SearchResult:
-    documents: List[str]
-    metadatas: List[Dict]
-    distances: List[float]
+from models.vector_document import VectorDocument
 
 
 class VectorStoreService:
 
     def __init__(self):
-        self.embeddings = OpenAIEmbeddings()
+        self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
         self.text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
             chunk_size=300, chunk_overlap=50)
         self.vectorstore = Chroma(persist_directory="./chroma_store",
                                   embedding_function=self.embeddings)
 
-    def add_documents(self, texts: List[str], metadata: List[Dict],
-                      ids: List[str]):
-        """
-        Add documents to the vector store
+    def add_documents(self, text: str, metadata: dict):
 
-        Args:
-            texts: List of text content
-            metadata: List of metadata dictionaries
-            ids: List of unique identifiers
-        """
-        documents = [
-            Document(page_content=text, metadata=meta)
-            for text, meta in zip(texts, metadata)
+        # Split text into chunks
+        chunks = self.text_splitter.split_text(text)
+        docs = [
+            Document(page_content=chunk, metadata=metadata) for chunk in chunks
         ]
-        splits = self.text_splitter.split_documents(documents)
-        self.vectorstore.add_documents(documents=splits)
 
-    def query_documents(self,
-                        query_text: str,
-                        n_results: int = 5) -> SearchResult:
-        """
-        Query documents using text similarity
+        # Index chunks in the vector store
+        self.vectorstore.add_documents(docs)
 
-        Args:
-            query_text: Text to search for
-            n_results: Number of results to return
+    def search(self, query_text: str, top_k=5):
+        # Embed query text
+        embedding = self.embeddings.embed_query(query_text)
 
-        Returns:
-            SearchResult object containing documents, metadata, and distances
-        """
-        docs = self.vectorstore.similarity_search(query_text, k=n_results)
-        return SearchResult(
-            documents=[doc.page_content for doc in docs],
-            metadatas=[doc.metadata for doc in docs],
-            distances=[1.0] * len(docs)  # Placeholder for compatibility
-        )
+        # Perform similarity search
+        results = self.vectorstore.similarity_search_by_vector(embedding,
+                                                               k=top_k)
+        return results
