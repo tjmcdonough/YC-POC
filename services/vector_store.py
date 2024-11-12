@@ -5,22 +5,23 @@ from langchain_core.documents import Document
 from typing import List, Dict
 from dataclasses import dataclass
 
+
 class VectorStoreService:
     _instance = None
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(VectorStoreService, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
-    
+
     def __init__(self):
         if not self._initialized:
             self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
             self.text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
                 chunk_size=300, chunk_overlap=50)
             self.vectorstore = Chroma(persist_directory="./chroma_store",
-                                    embedding_function=self.embeddings)
+                                      embedding_function=self.embeddings)
             self._initialized = True
 
     def add_documents(self, text: str, metadata: dict):
@@ -35,13 +36,13 @@ class VectorStoreService:
         # Persist after adding documents
         self.vectorstore.persist()
 
-    def search(self, query_text: str, top_k=5):
+    def search(self, query_text: str, top_k=5) -> list[Document]:
         # Embed query text
-        embedding = self.embeddings.embed_query(query_text)
+        # embedding = self.embeddings.embed_query(query_text)
 
         # Perform similarity search
-        results = self.vectorstore.similarity_search_by_vector(embedding,
-                                                             k=top_k)
+        results = self.vectorstore.similarity_search(query_text, k=top_k)
+        print("Search results:", results)
         return results
 
     def clear_data(self):

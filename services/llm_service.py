@@ -10,14 +10,8 @@ import base64
 import io
 from PIL import Image
 from pydantic import SecretStr
-from langchain_core.prompts.image import ImagePromptTemplate
 
 # LangChain tracing configuration
-os.environ["LANGCHAIN_TRACING_V2"] = "true"
-os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
-os.environ[
-    "LANGCHAIN_API_KEY"] = "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"
-os.environ["LANGCHAIN_PROJECT"] = "pr-rundown-king-67"
 default_model = "gpt-4o-mini"
 embedding_model = "text-embedding-3-small"
 
@@ -157,12 +151,70 @@ class LLMService:
             messages = [HumanMessage(content=message_content)]
             response = self.llm.invoke(messages)
 
-            print("Image Response:", response.content)
             return str(response.content
                        ) if response.content else "No description available"
 
         except Exception as e:
             return f"Error analyzing image: {str(e)}"
+
+    def create_similar_queries(self, query: str, num_queries=4) -> str:
+        """Generate similar queries based on a given query"""
+        prompt = PromptTemplate(
+            input_variables=["query", "num_queries"],
+            template="""Generate similar queries based on the following query.
+
+            Query: {query}
+
+            Output: ({num_queries} queries)""")
+
+        response = self.llm.invoke(
+            prompt.format(query=query, num_queries=num_queries))
+
+        return str(response.content)
+
+    def pass_vector_results_as_context(self, vector_results: list,
+                                       queries: str) -> str:
+        """
+        Process vector search results and a query string to create context for the LLM.
+
+        Args:
+            vector_results (list): List of document chunks from vector search
+            queries (str): The user's query string
+
+        Returns:
+            str: Formatted context string for LLM prompt
+        """
+        # Initialize empty list to store processed contexts
+        processed_documents = []
+
+        # Process each vector result
+        for doc in vector_results:
+            # Format each document with its metadata
+            doc_text = f"Content: {doc.page_content}"
+            if hasattr(doc, 'metadata') and doc.metadata:
+                doc_text += f"\nSource: {doc.metadata.get('source', 'Unknown')}"
+                doc_text += f"\nPage: {doc.metadata.get('page', 'N/A')}"
+            processed_documents.append(doc_text)
+
+        # Format the final context string
+        context_template = """
+        Based on the following relevant information:
+
+        Query: {query}
+
+        {contexts}
+
+        Please provide a comprehensive response that addresses the query while maintaining accuracy and relevance.
+        """
+
+        # Build the contexts string
+        formatted_contexts = "\nRelevant documents:\n"
+        for i, doc in enumerate(processed_documents, 1):
+            formatted_contexts += f"\n{i}. {doc}\n"
+
+        # Return the final formatted context
+        return context_template.format(query=queries,
+                                       contexts=formatted_contexts)
 
     def batch_process_images(self,
                              image_paths: List[str],

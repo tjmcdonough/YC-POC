@@ -9,7 +9,7 @@ def render_results(query_analysis, vector_results):
     if not vector_results:
         st.info("No relevant documents found")
         return
-        
+    
     for doc in vector_results:
         with st.expander(f"Document: {doc.metadata.get('filename', 'Unknown')}"):
             st.markdown("**Content Extract:**")
