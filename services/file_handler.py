@@ -54,6 +54,7 @@ class PDFHandler(FileHandler):
                                 image = Image.open(io.BytesIO(image_data))
                                 # Get image summary
                                 image_summary = self._get_image_summary(image, llm_service)
+                                print(image_summary)
                                 image_summaries.append(f"[Page {page_num + 1}, Image {img_index + 1}]: {image_summary}")
                         except Exception as e:
                             print(f"Error processing image on page {page_num + 1}, image {img_index + 1}: {str(e)}")
@@ -79,17 +80,17 @@ class DocxHandler(FileHandler):
         doc = docx.Document(file)
         text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
         image_summaries = []
-        print("Running DocxHandler")
+        print(f"Running DocxHandler: {list(doc.part.rels.values())}")
         if llm_service:  # Only process images if LLM service is provided
             for rel in doc.part.rels.values():
                 if "image" in rel.target_ref:
                     try:
-                        print(rel)
                         # Extract image
                         image_data = rel.target_part.blob
                         image = Image.open(io.BytesIO(image_data))
                         # Get image summary
                         image_summary = self._get_image_summary(image, llm_service)
+                        print(image_summary)
                         image_summaries.append(image_summary)
                     except Exception as e:
                         print(f"Error processing image in DOCX: {str(e)}")

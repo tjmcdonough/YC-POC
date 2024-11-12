@@ -9,6 +9,7 @@ from openai import OpenAI
 import base64
 import io
 from PIL import Image
+from pydantic import SecretStr
 from langchain_core.prompts.image import ImagePromptTemplate
 
 # LangChain tracing configuration
@@ -20,31 +21,45 @@ os.environ["LANGCHAIN_PROJECT"] = "pr-rundown-king-67"
 default_model = "gpt-4o-mini"
 embedding_model = "text-embedding-3-small"
 
-
 class LLMService:
-
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(LLMService, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
     def __init__(self):
-        from langchain.callbacks.manager import CallbackManager
-        from langchain.callbacks.tracers import LangChainTracer
+        if not self._initialized:
+            from langchain.callbacks.manager import CallbackManager
+            from langchain.callbacks.tracers import LangChainTracer
 
-        tracer = LangChainTracer()
-        callback_manager = CallbackManager([tracer])
+            tracer = LangChainTracer()
+            callback_manager = CallbackManager([tracer])
 
-        self.llm = ChatOpenAI(temperature=0,
-                              model=default_model,
-                              api_key=os.environ["OPENAI_API_KEY"],
-                              callbacks=callback_manager,
-                              max_tokens=4096)
+            # Create SecretStr from API key
+            api_key = SecretStr(os.environ["OPENAI_API_KEY"])
 
-        self.embeddings = OpenAIEmbeddings(
-            model=embedding_model,
-            api_key=os.environ["OPENAI_API_KEY"],
-            callbacks=callback_manager)
+            self.llm = ChatOpenAI(
+                temperature=0,
+                model="gpt-4o-mini",
+                api_key=api_key,
+                max_tokens=4096
+            )
 
-        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000,
-                                                            chunk_overlap=100)
+            self.embeddings = OpenAIEmbeddings(
+                model="text-embedding-3-small",
+                api_key=api_key
+            )
 
-        self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+            self.text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1000,
+                chunk_overlap=100
+            )
+
+            self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+            self._initialized = True
 
     def load_image_from_base64(self, image_base64: str) -> Image.Image:
         """Convert base64 string to PIL Image"""
@@ -97,27 +112,19 @@ class LLMService:
 
         # Determine query type based on content
         query_type = "semantic"
-        if any(word in query.lower()
-               for word in ["compare", "difference", "versus", "vs"]):
+        if any(word in query.lower() for word in ["compare", "difference", "versus", "vs"]):
             query_type = "comparative"
-        elif any(word in query.lower()
-                 for word in ["when", "timeline", "chronological"]):
+        elif any(word in query.lower() for word in ["when", "timeline", "chronological"]):
             query_type = "temporal"
-        elif any(word in query.lower()
-                 for word in ["sentiment", "opinion", "feel"]):
+        elif any(word in query.lower() for word in ["sentiment", "opinion", "feel"]):
             query_type = "sentiment"
-        elif any(word in query.lower()
-                 for word in ["trend", "pattern", "change over time"]):
+        elif any(word in query.lower() for word in ["trend", "pattern", "change over time"]):
             query_type = "trend"
 
         return {"analysis": str(response.content), "type": query_type}
 
     def analyze_image(self, image_input: Union[str, Image.Image]) -> str:
-        """
-        Analyze an image using OpenAI with ImagePromptTemplate.
-        Args:
-            image_input: Either a base64 string or PIL Image object
-        """
+        """Analyze an image using OpenAI with proper message formatting"""
         try:
             # Handle different input types
             if isinstance(image_input, str):
@@ -128,33 +135,26 @@ class LLMService:
             elif isinstance(image_input, Image.Image):
                 buffer = io.BytesIO()
                 image_input.save(buffer, format="PNG")
-                image_base64 = base64.b64encode(
-                    buffer.getvalue()).decode('utf-8')
+                image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
             else:
                 raise ValueError("Invalid image input type")
 
-            # Get the appropriate template text
-            prompt_message = "Provide a detailed description of this image."
-
-            # Create messages with both text and image
-            messages = [
-                HumanMessage(content=[{
-                    "type": "text",
-                    "text": prompt_message
-                }, {
+            # Create ImagePromptTemplate
+            prompt_template = ImagePromptTemplate(
+                template="Provide a detailed description of this image.",
+                input_variables=["image"],
+                partial_variables={"image": {
                     "type": "image_url",
                     "image_url": {
                         "url": f"data:image/jpeg;base64,{image_base64}",
                         "detail": "high"
-                    },
-                }])
-            ]
+                    }
+                }}
+            )
 
-            # Get response from the model
-            response = self.llm.invoke(messages)
-
-            return str(response.content
-                       ) if response.content else "No description available"
+            # Invoke the LLM with the ImagePromptTemplate
+            response = self.llm.invoke(prompt_template)
+            return str(response.content) if response.content else "No description available"
 
         except Exception as e:
             return f"Error analyzing image: {str(e)}"
@@ -170,3 +170,6 @@ class LLMService:
             except Exception as e:
                 results[image_path] = f"Error processing image: {str(e)}"
         return results
+
+    def __str__(self):
+        return "LLM Service"

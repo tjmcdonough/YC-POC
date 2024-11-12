@@ -46,7 +46,9 @@ def render_file_upload(vector_store):
         if not is_valid:
             st.error(error_msg)
             return
-        
+            
+        print("Uploading file...")
+
         try:
             if uploaded_file.name.endswith('.zip'):
                 with zipfile.ZipFile(uploaded_file) as z:

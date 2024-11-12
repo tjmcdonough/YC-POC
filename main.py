@@ -13,18 +13,17 @@ st.set_page_config(
 
 def initialize_services():
     try:
-        # Initialize services without session state
+        # Initialize services using singleton pattern
         vector_store = VectorStoreService()
-        if 'llm_service' not in st.session_state:
-            st.session_state.llm_service = LLMService()
-        return vector_store
+        llm_service = LLMService()
+        return vector_store, llm_service
     except Exception as e:
         st.error(f"Error initializing services: {str(e)}")
-        return None
+        return None, None
 
 def main():
-    vector_store = initialize_services()
-    if not vector_store:
+    vector_store, llm_service = initialize_services()
+    if not vector_store or not llm_service:
         st.stop()
     
     st.title("Document Processing System")
@@ -35,10 +34,7 @@ def main():
         render_file_upload(vector_store)
     
     with tabs[1]:
-        render_query_interface(
-            vector_store,
-            st.session_state.llm_service
-        )
+        render_query_interface(vector_store, llm_service)
 
 if __name__ == "__main__":
     main()
