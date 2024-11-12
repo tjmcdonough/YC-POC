@@ -41,7 +41,7 @@ def render_query_interface(vector_store, llm_service):
             help="Number of most relevant results to return")
 
     # Search button with loading state
-    if st.button("Search", type="primary", disabled=not query):
+    if st.button("Search", type="primary"):
         if not validate_query(query)[0]:
             st.error("Please enter a valid query")
             return
