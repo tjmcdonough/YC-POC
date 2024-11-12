@@ -46,11 +46,11 @@ class VectorStoreService:
 
     def clear_data(self):
         try:
-            # Get all document IDs
-            ids = [doc.id for doc in self.vectorstore.get()]
-            if ids:
-                # Delete documents by IDs
-                self.vectorstore._collection.delete(ids=ids)
+            # Use _collection.get() to get raw documents
+            results = self.vectorstore._collection.get()
+            if results and results['ids']:
+                # Delete documents using the ids from results
+                self.vectorstore._collection.delete(ids=results['ids'])
                 # Persist the changes
                 self.vectorstore.persist()
         except Exception as e:
