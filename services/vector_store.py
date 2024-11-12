@@ -47,7 +47,8 @@ class VectorStoreService:
     def clear_data(self):
         # Delete all documents from the vector store
         try:
-            self.vectorstore._collection.delete(where={})
+            # Use a where clause that matches all documents
+            self.vectorstore._collection.delete(where={"$and": [{}]})
             # Persist the changes
             self.vectorstore.persist()
         except Exception as e:
