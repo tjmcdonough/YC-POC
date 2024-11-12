@@ -41,5 +41,14 @@ class VectorStoreService:
 
         # Perform similarity search
         results = self.vectorstore.similarity_search_by_vector(embedding,
-                                                            k=top_k)
+                                                             k=top_k)
         return results
+
+    def clear_data(self):
+        # Delete all documents from the vector store
+        try:
+            self.vectorstore._collection.delete(where={})
+            # Persist the changes
+            self.vectorstore.persist()
+        except Exception as e:
+            raise Exception(f"Error clearing vector store: {str(e)}")

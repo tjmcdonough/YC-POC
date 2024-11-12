@@ -26,6 +26,14 @@ def process_single_file(file: BinaryIO, vector_store) -> None:
 def render_file_upload(vector_store):
     st.header("Document Upload")
     
+    # Add Clear Data button
+    if st.button("Clear All Documents", type="secondary"):
+        try:
+            vector_store.clear_data()
+            st.success("All documents cleared successfully!")
+        except Exception as e:
+            st.error(f"Error clearing documents: {str(e)}")
+    
     uploaded_file = st.file_uploader(
         "Choose a file",
         type=list(FileHandlerFactory._handlers.keys()) + ['zip'],
