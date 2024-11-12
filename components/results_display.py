@@ -1,6 +1,6 @@
 import streamlit as st
 
-def render_results(query_analysis, vector_results, documents):
+def render_results(query_analysis, vector_results):
     st.subheader("Query Analysis")
     st.json(query_analysis)
     
@@ -17,20 +17,3 @@ def render_results(query_analysis, vector_results, documents):
             
             st.markdown("**Metadata:**")
             st.json(doc.metadata)
-
-    st.subheader("All Documents")
-    df = pd.DataFrame(
-        [
-            {
-                "filename": doc.metadata.get('filename', 'Unknown'),
-                "file_type": doc.metadata.get('file_type', 'Unknown'),
-                "status": "completed",
-                "created_at": doc.metadata.get('created_at', 'Unknown')
-            }
-            for doc in documents
-        ]
-    )
-    st.dataframe(
-        df[['filename', 'file_type', 'status', 'created_at']],
-        use_container_width=True
-    )

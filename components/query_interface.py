@@ -51,25 +51,23 @@ def render_query_interface(vector_store, llm_service):
                 # Analyze query intent
                 query_analysis = llm_service.analyze_query(query)
 
-                # Get relevant documents with corrected parameter name
+                # Get relevant documents
                 vector_results = vector_store.search(query, top_k=n_results)
 
-                # Apply filters
-                filters = {}
-                if file_type_filter:
-                    filters["file_type"] = file_type_filter
-                if isinstance(date_range, tuple) and len(date_range) == 2:
-                    filters["date_range"] = {
-                        "start": date_range[0],
-                        "end": date_range[1]
-                    }
-
-                # Get all documents from the database service
-                documents = st.session_state.db_service.get_documents(filters)
+                # Filter results based on user selection
+                filtered_results = []
+                for doc in vector_results:
+                    if file_type_filter and doc.metadata.get('file_type') not in file_type_filter:
+                        continue
+                    if date_range and isinstance(date_range, tuple) and len(date_range) == 2:
+                        doc_date = datetime.fromtimestamp(float(doc.metadata.get('created_at', 0)))
+                        if not (date_range[0] <= doc_date.date() <= date_range[1]):
+                            continue
+                    filtered_results.append(doc)
 
                 # Display results
                 st.success("Search completed!")
-                render_results(query_analysis, vector_results, documents)
+                render_results(query_analysis, filtered_results)
             except Exception as e:
                 st.error(f"An error occurred during search: {str(e)}")
                 st.stop()

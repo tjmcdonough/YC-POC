@@ -1,7 +1,6 @@
 import streamlit as st
 from components.file_upload import render_file_upload
 from components.query_interface import render_query_interface
-from services.database import DatabaseService
 from services.vector_store import VectorStoreService
 from services.llm_service import LLMService
 
@@ -14,8 +13,6 @@ st.set_page_config(
 
 def initialize_services():
     try:
-        if 'db_service' not in st.session_state:
-            st.session_state.db_service = DatabaseService()
         if 'vector_store' not in st.session_state:
             st.session_state.vector_store = VectorStoreService()
         if 'llm_service' not in st.session_state:
