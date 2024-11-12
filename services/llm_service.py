@@ -21,15 +21,16 @@ os.environ["LANGCHAIN_PROJECT"] = "pr-rundown-king-67"
 default_model = "gpt-4o-mini"
 embedding_model = "text-embedding-3-small"
 
+
 class LLMService:
     _instance = None
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(LLMService, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
-    
+
     def __init__(self):
         if not self._initialized:
             from langchain.callbacks.manager import CallbackManager
@@ -41,22 +42,16 @@ class LLMService:
             # Create SecretStr from API key
             api_key = SecretStr(os.environ["OPENAI_API_KEY"])
 
-            self.llm = ChatOpenAI(
-                temperature=0,
-                model="gpt-4o-mini",
-                api_key=api_key,
-                max_tokens=4096
-            )
+            self.llm = ChatOpenAI(temperature=0,
+                                  model="gpt-4o-mini",
+                                  api_key=api_key,
+                                  max_tokens=4096)
 
-            self.embeddings = OpenAIEmbeddings(
-                model="text-embedding-3-small",
-                api_key=api_key
-            )
+            self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small",
+                                               api_key=api_key)
 
             self.text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000,
-                chunk_overlap=100
-            )
+                chunk_size=1000, chunk_overlap=100)
 
             self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
             self._initialized = True
@@ -112,13 +107,17 @@ class LLMService:
 
         # Determine query type based on content
         query_type = "semantic"
-        if any(word in query.lower() for word in ["compare", "difference", "versus", "vs"]):
+        if any(word in query.lower()
+               for word in ["compare", "difference", "versus", "vs"]):
             query_type = "comparative"
-        elif any(word in query.lower() for word in ["when", "timeline", "chronological"]):
+        elif any(word in query.lower()
+                 for word in ["when", "timeline", "chronological"]):
             query_type = "temporal"
-        elif any(word in query.lower() for word in ["sentiment", "opinion", "feel"]):
+        elif any(word in query.lower()
+                 for word in ["sentiment", "opinion", "feel"]):
             query_type = "sentiment"
-        elif any(word in query.lower() for word in ["trend", "pattern", "change over time"]):
+        elif any(word in query.lower()
+                 for word in ["trend", "pattern", "change over time"]):
             query_type = "trend"
 
         return {"analysis": str(response.content), "type": query_type}
@@ -135,26 +134,32 @@ class LLMService:
             elif isinstance(image_input, Image.Image):
                 buffer = io.BytesIO()
                 image_input.save(buffer, format="PNG")
-                image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+                image_base64 = base64.b64encode(
+                    buffer.getvalue()).decode('utf-8')
             else:
                 raise ValueError("Invalid image input type")
 
             # Create ImagePromptTemplate
-            prompt_template = ImagePromptTemplate(
-                template="Provide a detailed description of this image.",
-                input_variables=["image"],
-                partial_variables={"image": {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{image_base64}",
-                        "detail": "high"
-                    }
-                }}
-            )
+            message_content = [{
+                "type":
+                "text",
+                "text":
+                "Provide a detailed description of this image."
+            }, {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{image_base64}",
+                    "detail": "high"
+                }
+            }]
 
-            # Invoke the LLM with the ImagePromptTemplate
-            response = self.llm.invoke(prompt_template)
-            return str(response.content) if response.content else "No description available"
+            # Create the message and invoke
+            messages = [HumanMessage(content=message_content)]
+            response = self.llm.invoke(messages)
+
+            print("Image Response:", response.content)
+            return str(response.content
+                       ) if response.content else "No description available"
 
         except Exception as e:
             return f"Error analyzing image: {str(e)}"

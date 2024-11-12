@@ -14,7 +14,9 @@ from bs4 import BeautifulSoup
 import re
 import base64
 
+
 class FileHandler(ABC):
+
     @abstractmethod
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:
         pass
@@ -25,7 +27,9 @@ class FileHandler(ABC):
         img_str = base64.b64encode(buffered.getvalue()).decode()
         return llm_service.analyze_image(img_str)
 
+
 class PDFHandler(FileHandler):
+
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:
         try:
             # Create a bytes buffer from the file
@@ -33,7 +37,7 @@ class PDFHandler(FileHandler):
             pdf_document = fitz.open(stream=file_content, filetype="pdf")
             text_parts = []
             image_summaries = []
-            
+
             # Process each page
             for page_num in range(len(pdf_document)):
                 page = pdf_document[page_num]
@@ -41,10 +45,11 @@ class PDFHandler(FileHandler):
                 text = page.get_text().strip()
                 if text:  # Only append non-empty text
                     text_parts.append(text)
-                
+
                 # Process images if LLM service is provided
                 if llm_service:
-                    for img_index, img in enumerate(page.get_images(full=True)):
+                    for img_index, img in enumerate(
+                            page.get_images(full=True)):
                         try:
                             xref = img[0]  # Get reference number
                             base_image = pdf_document.extract_image(xref)
@@ -53,20 +58,26 @@ class PDFHandler(FileHandler):
                                 # Convert to PIL Image
                                 image = Image.open(io.BytesIO(image_data))
                                 # Get image summary
-                                image_summary = self._get_image_summary(image, llm_service)
+                                image_summary = self._get_image_summary(
+                                    image, llm_service)
                                 print(image_summary)
-                                image_summaries.append(f"[Page {page_num + 1}, Image {img_index + 1}]: {image_summary}")
+                                image_summaries.append(
+                                    f"[Page {page_num + 1}, Image {img_index + 1}]: {image_summary}"
+                                )
                         except Exception as e:
-                            print(f"Error processing image on page {page_num + 1}, image {img_index + 1}: {str(e)}")
+                            print(
+                                f"Error processing image on page {page_num + 1}, image {img_index + 1}: {str(e)}"
+                            )
                             continue
-            
+
             # Memory efficient text combination
             text = "\n\n".join(text_parts)
-            
+
             # Combine text and image summaries if any exist
             if image_summaries:
-                text = text + "\n\nImage Descriptions:\n" + "\n".join(image_summaries)
-            
+                text = text + "\n\nImage Descriptions:\n" + "\n".join(
+                    image_summaries)
+
             return text
 
         except Exception as e:
@@ -75,34 +86,42 @@ class PDFHandler(FileHandler):
             if 'pdf_document' in locals():
                 pdf_document.close()
 
+
 class DocxHandler(FileHandler):
+
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:
         doc = docx.Document(file)
         text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
         image_summaries = []
-        print(f"Running DocxHandler: {list(doc.part.rels.values())}")
+
         if llm_service:  # Only process images if LLM service is provided
+            print("llm_service")
             for rel in doc.part.rels.values():
                 if "image" in rel.target_ref:
                     try:
                         # Extract image
+                        print("Image found")
                         image_data = rel.target_part.blob
                         image = Image.open(io.BytesIO(image_data))
                         # Get image summary
-                        image_summary = self._get_image_summary(image, llm_service)
+                        image_summary = self._get_image_summary(
+                            image, llm_service)
                         print(image_summary)
                         image_summaries.append(image_summary)
                     except Exception as e:
                         print(f"Error processing image in DOCX: {str(e)}")
                         continue
-        
+
         # Combine text and image summaries
         if image_summaries:
-            combined_text = text + "\n\nImage Descriptions:\n" + "\n".join(image_summaries)
+            combined_text = text + "\n\nImage Descriptions:\n" + "\n".join(
+                image_summaries)
             return combined_text
         return text
 
+
 class ImageHandler(FileHandler):
+
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:
         try:
             image = Image.open(file)
@@ -112,21 +131,29 @@ class ImageHandler(FileHandler):
         except Exception as e:
             return f"Error processing image: {str(e)}"
 
+
 class JSONHandler(FileHandler):
+
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:
         return json.dumps(json.load(file), indent=2)
 
+
 class XMLHandler(FileHandler):
+
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:
         tree = ET.parse(file)
         return ET.tostring(tree.getroot(), encoding='unicode', method='xml')
 
+
 class CSVHandler(FileHandler):
+
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:
         df = pd.read_csv(file)
         return df.to_string()
 
+
 class MarkdownHandler(FileHandler):
+
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:
         content = file.read().decode('utf-8')
         # Convert markdown to HTML
@@ -135,11 +162,15 @@ class MarkdownHandler(FileHandler):
         soup = BeautifulSoup(html, 'html.parser')
         return soup.get_text(separator='\n\n')
 
+
 class TextHandler(FileHandler):
+
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:
         return file.read().decode('utf-8')
 
+
 class HTMLHandler(FileHandler):
+
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:
         content = file.read().decode('utf-8')
         soup = BeautifulSoup(content, 'html.parser')
@@ -152,13 +183,16 @@ class HTMLHandler(FileHandler):
         text = re.sub(r'\n\s*\n', '\n\n', text.strip())
         return text
 
+
 class RTFHandler(FileHandler):
+
     def extract_text(self, file: BinaryIO, llm_service=None) -> str:
         # Simple RTF text extraction
         content = file.read().decode('utf-8', errors='ignore')
         # Remove RTF formatting
         text = re.sub(r'[\\\{\}]|\\\w+|\{.*?\}', '', content)
         return text.strip()
+
 
 class FileHandlerFactory:
     _handlers = {
