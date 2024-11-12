@@ -13,17 +13,18 @@ st.set_page_config(
 
 def initialize_services():
     try:
-        if 'vector_store' not in st.session_state:
-            st.session_state.vector_store = VectorStoreService()
+        # Initialize services without session state
+        vector_store = VectorStoreService()
         if 'llm_service' not in st.session_state:
             st.session_state.llm_service = LLMService()
-        return True
+        return vector_store
     except Exception as e:
         st.error(f"Error initializing services: {str(e)}")
-        return False
+        return None
 
 def main():
-    if not initialize_services():
+    vector_store = initialize_services()
+    if not vector_store:
         st.stop()
     
     st.title("Document Processing System")
@@ -31,11 +32,11 @@ def main():
     tabs = st.tabs(["Document Upload", "Query Documents"])
     
     with tabs[0]:
-        render_file_upload(st.session_state.vector_store)
+        render_file_upload(vector_store)
     
     with tabs[1]:
         render_query_interface(
-            st.session_state.vector_store,
+            vector_store,
             st.session_state.llm_service
         )
 
