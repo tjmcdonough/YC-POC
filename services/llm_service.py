@@ -1,4 +1,5 @@
 import os
+from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings
@@ -172,49 +173,31 @@ class LLMService:
 
         return str(response.content)
 
-    def pass_vector_results_as_context(self, vector_results: list,
+    def pass_vector_results_as_context(self, vector_results: list[Document],
                                        queries: str) -> str:
-        """
-        Process vector search results and a query string to create context for the LLM.
-
-        Args:
-            vector_results (list): List of document chunks from vector search
-            queries (str): The user's query string
-
-        Returns:
-            str: Formatted context string for LLM prompt
-        """
         # Initialize empty list to store processed contexts
-        processed_documents = []
-
-        # Process each vector result
-        for doc in vector_results:
-            # Format each document with its metadata
-            doc_text = f"Content: {doc.page_content}"
-            if hasattr(doc, 'metadata') and doc.metadata:
-                doc_text += f"\nSource: {doc.metadata.get('source', 'Unknown')}"
-                doc_text += f"\nPage: {doc.metadata.get('page', 'N/A')}"
-            processed_documents.append(doc_text)
+        processed_documents = ", ".join(doc.page_content
+                                        for doc in vector_results)
 
         # Format the final context string
         context_template = """
-        Based on the following relevant information:
+        Answer the following question based on this context:
 
-        Query: {query}
+        {context}
 
-        {contexts}
-
-        Please provide a comprehensive response that addresses the query while maintaining accuracy and relevance.
+        Question: {query}
         """
 
-        # Build the contexts string
-        formatted_contexts = "\nRelevant documents:\n"
-        for i, doc in enumerate(processed_documents, 1):
-            formatted_contexts += f"\n{i}. {doc}\n"
+        print("________________________processed_documents: ",
+              processed_documents)
 
-        # Return the final formatted context
-        return context_template.format(query=queries,
-                                       contexts=formatted_contexts)
+        prompt = PromptTemplate(input_variables=["query", "context"],
+                                template=context_template)
+
+        response = self.llm.invoke(
+            prompt.format(query=queries, context=processed_documents))
+
+        return str(response.content)
 
     def batch_process_images(self,
                              image_paths: List[str],

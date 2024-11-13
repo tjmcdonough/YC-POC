@@ -2,7 +2,7 @@ import streamlit as st
 from services.llm_service import LLMService
 from services.vector_store import VectorStoreService
 from utils.validators import validate_query
-from components.results_display import render_results
+from components.results_display import render_results, render_result
 
 
 # TODO: Change this so it rewords the query using an LLM, finds similar vectors, get unique vectors then pass this as context to the langchain LLM
@@ -34,11 +34,13 @@ def render_query_interface(vector_store: VectorStoreService,
                 vector_results = vector_store.search(queries_string, top_k=5)
 
                 # Use vector results to pass as context to the LLM
-                llm_service.pass_vector_results_as_context(vector_results, queries_string)
+                final_result = llm_service.pass_vector_results_as_context(
+                    vector_results, query)
 
                 # Display results
                 st.success("Search completed!")
-                render_results(queries_string, vector_results)
+                # render_results(queries_string, vector_results)
+                render_result(final_result)
             except Exception as e:
                 st.error(f"An error occurred during search: {str(e)}")
                 st.stop()

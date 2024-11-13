@@ -42,7 +42,7 @@ class VectorStoreService:
 
         # Perform similarity search
         results = self.vectorstore.similarity_search(query_text, k=top_k)
-        print("Search results:", results)
+
         return results
 
     def clear_data(self):

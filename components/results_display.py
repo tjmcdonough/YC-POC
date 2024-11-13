@@ -17,3 +17,8 @@ def render_results(query_analysis, vector_results):
             
             st.markdown("**Metadata:**")
             st.json(doc.metadata)
+
+
+def render_result(result):
+    st.subheader("Result")
+    st.text(result)
