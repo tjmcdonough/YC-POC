@@ -26,10 +26,18 @@ def main():
     if not vector_store or not llm_service:
         st.stop()
 
-    st.title("AI Document Processing & Analysis System")
-    st.text(
-        "Hey YC! This is a very basic generic RAG system. The customer flow will work like this. User types in what product they are building, we generate agents that handle specific tasks via an in depth prompt, they add their data via URL if they want us to scrape or attach, we tweak the infrastructure if we need to. Then the user just plugs in an API and can ask anything using text and images"
-    )
+    st.subheader("Customer Flow")
+    st.write("Our RAG system streamlines custom AI deployment with a simple, intuitive flow. Here’s how it works:")
+
+    st.markdown("""
+    1. **Define the Product**: The user describes their product goals.
+    2. **Auto-Generate Agents**: We craft tailored agents for specific tasks based on a comprehensive prompt.
+    3. **Data Integration**: Users can provide data via URLs (for web scraping) or attachments, simplifying setup.
+    4. **Infrastructure Tuning**: We handle any necessary infrastructure adjustments on our end.
+    5. **Single API Access**: The user connects to our main API, gaining the ability to query their data via text and images seamlessly.
+    """)
+
+    st.write("This approach brings AI integration into reach without the typical complexity.")
 
     tabs = st.tabs(["Document Upload", "Query Documents"])
 
