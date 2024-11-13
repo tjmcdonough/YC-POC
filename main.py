@@ -26,8 +26,10 @@ def main():
     if not vector_store or not llm_service:
         st.stop()
 
+    st.subheader("Hey YC")
+    st.write("This is a very basic generic RAG system. An actual MVP will be ready to showcase the below by end of November. It will work something like...")
+
     st.subheader("Customer Flow")
-    st.write("Our RAG system streamlines custom AI deployment with a simple, intuitive flow. Here’s how it works:")
 
     st.markdown("""
     1. **Define the Product**: The user describes their product goals.
