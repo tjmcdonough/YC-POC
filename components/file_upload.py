@@ -28,7 +28,7 @@ def process_single_file(file: BinaryIO, vector_store, llm_service) -> None:
 
 
 def render_file_upload(vector_store, llm_service):
-    st.header("Document Upload")
+    st.header("Add Documents That Do Not Work In An LLM")
 
     # Add Clear Data button
     if st.button("Clear All Documents", type="secondary"):

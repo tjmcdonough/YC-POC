@@ -26,7 +26,7 @@ def main():
     if not vector_store or not llm_service:
         st.stop()
 
-    st.title("Document Processing System")
+    st.title("AI Document Processing & Analysis System")
 
     tabs = st.tabs(["Document Upload", "Query Documents"])
 

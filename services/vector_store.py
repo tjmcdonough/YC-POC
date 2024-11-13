@@ -4,6 +4,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from typing import List, Dict
 from dataclasses import dataclass
+from langchain.load import dumps, loads
 
 
 class VectorStoreService:
@@ -43,8 +44,17 @@ class VectorStoreService:
         # Perform similarity search
         results = self.vectorstore.similarity_search(query_text, k=top_k)
 
-        return results
+        return self.get_unique_union(results)
 
+    def get_unique_union(self, documents: list[Document]):
+        """ Unique union of retrieved docs """
+        # Flatten list of lists, and convert each Document to string
+        flattened_docs = [dumps(doc) for doc in documents]
+        # Get unique documents
+        unique_docs = list(set(flattened_docs))
+        # Return
+        return [loads(doc) for doc in unique_docs]
+        
     def clear_data(self):
         try:
             # Use _collection.get() to get raw documents
