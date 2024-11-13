@@ -35,7 +35,7 @@ def main():
     1. **Define the Product**: The user describes their product goals.
     2. **Auto-Generate Agents**: We craft tailored agents for specific tasks based on a comprehensive prompt.
     3. **Data Integration**: Users can provide data via URLs (for web scraping) or attachments, simplifying setup.
-    4. **Infrastructure Tuning**: We handle any necessary infrastructure adjustments on our end.
+    4. **Infrastructure Tuning**: We handle any necessary infrastructure adjustments on our end. The developer can also make tweaks their end for maximum customisation.
     5. **Single API Access**: The user connects to our main API, gaining the ability to query their data via text and images seamlessly.
     """)
 
