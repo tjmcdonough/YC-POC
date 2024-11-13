@@ -1,13 +1,11 @@
 from abc import ABC, abstractmethod
-import zipfile
 import io
-from typing import BinaryIO, List, Dict, Tuple
+from typing import BinaryIO
 import docx
 import fitz  # PyMuPDF
 from PIL import Image
 import json
 import xml.etree.ElementTree as ET
-import csv
 import pandas as pd
 import markdown
 from bs4 import BeautifulSoup
