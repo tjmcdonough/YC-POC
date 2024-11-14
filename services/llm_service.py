@@ -171,7 +171,7 @@ class LLMService:
         response = self.llm.invoke(
             prompt.format(query=query, num_queries=num_queries))
 
-        return str(response.content)
+        return query + "\n" + str(response.content)
 
     def pass_vector_results_as_context(self, vector_results: list[Document],
                                        queries: str) -> str:

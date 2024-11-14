@@ -32,6 +32,7 @@ def render_query_interface(vector_store: VectorStoreService,
 
                 # Get relevant documents with corrected parameter name
                 vector_results = vector_store.search(queries_string, top_k=5)
+                #vector_results = vector_store.get_all_documents()
 
                 # Use vector results to pass as context to the LLM
                 final_result = llm_service.pass_vector_results_as_context(
@@ -41,6 +42,7 @@ def render_query_interface(vector_store: VectorStoreService,
                 st.success("Search completed!")
                 # render_results(queries_string, vector_results)
                 render_result(final_result)
+                render_results({queries_string}, vector_results)
             except Exception as e:
                 st.error(f"An error occurred during search: {str(e)}")
                 st.stop()

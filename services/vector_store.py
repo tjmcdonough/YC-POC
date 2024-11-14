@@ -46,6 +46,37 @@ class VectorStoreService:
 
         return self.get_unique_union(results)
 
+    def get_all_documents(self) -> List[Document]:
+        """
+        Retrieves all documents from the vector store.
+
+        Returns:
+            List[Document]: List of unique documents with their content and metadata
+
+        Raises:
+            Exception: If there's an error retrieving documents from the vector store
+        """
+        try:
+            # Get all documents from the collection
+            results = self.vectorstore._collection.get()
+
+            if not results or not results['documents']:
+                return []
+
+            # Create Document objects from the raw results
+            documents = [
+                Document(page_content=doc,
+                         metadata=meta if meta else {}) for doc, meta in zip(
+                             results['documents'], results['metadatas'])
+            ]
+
+            # Return unique documents using the existing get_unique_union method
+            return self.get_unique_union(documents)
+
+        except Exception as e:
+            raise Exception(
+                f"Error retrieving documents from vector store: {str(e)}")
+
     def get_unique_union(self, documents: list[Document]):
         """ Unique union of retrieved docs """
         # Flatten list of lists, and convert each Document to string
@@ -54,7 +85,7 @@ class VectorStoreService:
         unique_docs = list(set(flattened_docs))
         # Return
         return [loads(doc) for doc in unique_docs]
-        
+
     def clear_data(self):
         try:
             # Use _collection.get() to get raw documents
